@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.venv/
+.venv-1/
+venv/
+.env
+.pytest_cache/
+.mypy_cache/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Project generated files
+artifacts/
+logs/
+models/
+outputs/
+
+# Data folders
+/data/raw/*
+/data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# OS/system files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# MLflow
+mlflow.db
+mlruns/
