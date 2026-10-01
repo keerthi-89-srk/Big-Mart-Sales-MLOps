@@ -1,95 +1,201 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 
+
+# Project root
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = PROJECT_ROOT / "data"
-PROCESSED_DIR = DATA_DIR / "processed"
-RAW_DIR = DATA_DIR / "raw"
-TRAIN_PATH = PROJECT_ROOT / "Train.csv"
-TEST_PATH = PROJECT_ROOT / "Test.csv"
-TARGET_COLUMN = "Item_Outlet_Sales"
+
+# Raw dataset paths
+TRAIN_PATH = PROJECT_ROOT / "data" / "raw" / "Train.csv"
+TEST_PATH = PROJECT_ROOT / "data" / "raw" / "Test.csv"
+
+# Processed output directory
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 
-def load_datasets(train_path: str | Path = TRAIN_PATH, test_path: str | Path = TEST_PATH):
-    """Load the notebook's original raw train and test CSV files."""
+def load_datasets(train_path: Path, test_path: Path):
     print("[INFO] Loading raw datasets...")
+
     train_df = pd.read_csv(train_path)
     test_df = pd.read_csv(test_path)
-    print(f"[INFO] Train rows: {train_df.shape[0]}, columns: {train_df.shape[1]}")
-    print(f"[INFO] Test rows: {test_df.shape[0]}, columns: {test_df.shape[1]}")
+
+    print(
+        f"[INFO] Train rows: {len(train_df)}, "
+        f"columns: {train_df.shape[1]}"
+    )
+
+    print(
+        f"[INFO] Test rows: {len(test_df)}, "
+        f"columns: {test_df.shape[1]}"
+    )
+
     return train_df, test_df
 
 
-def clean_train_data(train_df: pd.DataFrame) -> pd.DataFrame:
-    """Apply the actual preprocessing logic used in the notebook."""
-    cleaned = train_df.copy()
+def preprocess_data(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame
+):
+    target_column = "Item_Outlet_Sales"
 
-    cleaned["Item_Fat_Content"] = cleaned["Item_Fat_Content"].replace(
-        {"LF": "Low Fat", "low fat": "Low Fat", "reg": "Regular"}
+    # Separate target from training features
+    train_features = train_df.drop(
+        columns=[target_column]
     )
 
-    cleaned["Item_Weight"] = cleaned["Item_Weight"].fillna(cleaned["Item_Weight"].median())
-    cleaned["Outlet_Size"] = cleaned["Outlet_Size"].fillna(cleaned["Outlet_Size"].mode()[0])
-    cleaned["Outlet_Age"] = 2026 - cleaned["Outlet_Establishment_Year"]
+    test_features = test_df.copy()
 
-    return cleaned
-
-
-def prepare_features(train_df: pd.DataFrame):
-    """Split into feature matrix and target column using the notebook logic."""
-    X = train_df.drop(TARGET_COLUMN, axis=1)
-    y = train_df[TARGET_COLUMN]
-
-    X = X.drop(
-        ["Item_Identifier", "Outlet_Identifier", "Outlet_Establishment_Year"],
-        axis=1,
-        errors="ignore",
+    # Combine train and test features so that
+    # categorical encoding is consistent
+    combined = pd.concat(
+        [train_features, test_features],
+        axis=0,
+        ignore_index=True
     )
 
-    categorical_columns = X.select_dtypes(include="object").columns
-    X = pd.get_dummies(X, columns=categorical_columns, drop_first=True)
+    # Handle missing values
+    for column in combined.columns:
 
-    return X, y
+        if combined[column].dtype == "object":
+
+            mode_value = combined[column].mode()
+
+            if not mode_value.empty:
+                combined[column] = combined[column].fillna(
+                    mode_value.iloc[0]
+                )
+            else:
+                combined[column] = combined[column].fillna(
+                    "Unknown"
+                )
+
+        else:
+
+            combined[column] = combined[column].fillna(
+                combined[column].median()
+            )
+
+    # Standardize Item_Fat_Content values
+    if "Item_Fat_Content" in combined.columns:
+
+        combined["Item_Fat_Content"] = combined[
+            "Item_Fat_Content"
+        ].replace(
+            {
+                "LF": "Low Fat",
+                "low fat": "Low Fat",
+                "reg": "Regular"
+            }
+        )
+
+    # One-hot encode categorical columns
+    categorical_columns = combined.select_dtypes(
+        include=["object"]
+    ).columns.tolist()
+
+    combined_encoded = pd.get_dummies(
+        combined,
+        columns=categorical_columns,
+        drop_first=False
+    )
+
+    # Convert boolean columns to integers
+    boolean_columns = combined_encoded.select_dtypes(
+        include=["bool"]
+    ).columns
+
+    if len(boolean_columns) > 0:
+        combined_encoded[boolean_columns] = (
+            combined_encoded[boolean_columns].astype(int)
+        )
+
+    # Split back into train and test
+    X_train = combined_encoded.iloc[
+        :len(train_df)
+    ].copy()
+
+    X_test = combined_encoded.iloc[
+        len(train_df):
+    ].copy()
+
+    y_train = train_df[
+        target_column
+    ].copy()
+
+    # Ensure numeric data
+    X_train = X_train.astype(float)
+    X_test = X_test.astype(float)
+
+    return X_train, X_test, y_train
+
+
+def save_processed_data(
+    X_train: pd.DataFrame,
+    X_test: pd.DataFrame,
+    y_train: pd.Series
+):
+
+    PROCESSED_DIR.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Save processed training features
+    X_train.to_csv(
+        PROCESSED_DIR / "X_train_processed.csv",
+        index=False
+    )
+
+    # Save processed test features
+    X_test.to_csv(
+        PROCESSED_DIR / "X_test_processed.csv",
+        index=False
+    )
+
+    # Save target
+    y_train.to_csv(
+        PROCESSED_DIR / "y_train_processed.csv",
+        index=False
+    )
+
+    print(
+        "[SUCCESS] Preprocessing completed successfully."
+    )
+
+    print(
+        f"[INFO] Processed files saved to: "
+        f"{PROCESSED_DIR}"
+    )
 
 
 def main():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
-        train_df, test_df = load_datasets(TRAIN_PATH, TEST_PATH)
 
-        cleaned_train = clean_train_data(train_df)
-        X, y = prepare_features(cleaned_train)
+        train_df, test_df = load_datasets(
+            TRAIN_PATH,
+            TEST_PATH
+        )
 
-        processed_summary = {
-            "target_column": TARGET_COLUMN,
-            "raw_train_shape": list(train_df.shape),
-            "raw_test_shape": list(test_df.shape),
-            "cleaned_train_shape": list(cleaned_train.shape),
-            "feature_matrix_shape": list(X.shape),
-            "target_shape": list(y.shape),
-            "categorical_columns": list(X.select_dtypes(include="object").columns),
-            "missing_item_weight_after_fill": int(cleaned_train["Item_Weight"].isnull().sum()),
-            "missing_outlet_size_after_fill": int(cleaned_train["Outlet_Size"].isnull().sum()),
-        }
+        X_train, X_test, y_train = preprocess_data(
+            train_df,
+            test_df
+        )
 
-        cleaned_train.to_csv(PROCESSED_DIR / "train_cleaned.csv", index=False)
-        X.to_csv(PROCESSED_DIR / "X_train_processed.csv", index=False)
-        y.to_csv(PROCESSED_DIR / "y_train_processed.csv", index=False)
-        (PROCESSED_DIR / "preprocess_summary.json").write_text(json.dumps(processed_summary, indent=2), encoding="utf-8")
-
-        print("[SUCCESS] Preprocessing completed successfully.")
-        print(f"[INFO] Processed files saved to: {PROCESSED_DIR}")
+        save_processed_data(
+            X_train,
+            X_test,
+            y_train
+        )
 
     except Exception as exc:
+
         print("[ERROR] Preprocessing failed.")
         print(f"[ERROR] {exc}")
+
         raise
 
 
