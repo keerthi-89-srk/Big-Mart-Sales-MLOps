@@ -1,0 +1,18 @@
+{
+  "reference_train": "data/raw/Train.csv",
+  "incoming_data": "data/raw/Test.csv",
+  "inference_log": "logs/inference/inference_log.jsonl",
+  "validation_features": "data/processed/X_train_processed.csv",
+  "validation_targets": "data/processed/y_train_processed.csv",
+  "report_directory": "reports",
+  "max_missing_rate": 0.6,
+  "data_psi_threshold": 0.2,
+  "prediction_psi_threshold": 0.2,
+  "numeric_bins": 10,
+  "minimum_prediction_sample": 30,
+  "prediction_reference_rows": 5000,
+  "prediction_chunk_size": 500,
+  "mae_relative_increase": 0.2,
+  "rmse_relative_increase": 0.2,
+  "r2_absolute_drop": 0.05
+}

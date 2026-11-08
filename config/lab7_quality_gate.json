@@ -1,0 +1,32 @@
+{
+  "target_column": "Item_Outlet_Sales",
+  "evaluation_report": "outputs/model_evaluation.json",
+  "report_directory": "reports",
+  "baseline": {
+    "registered_model_name": "BigMart_Sales_Model",
+    "model_version": 1,
+    "run_id": "ea2edf77d3da4f379fb4ef198f983751",
+    "source_report": "artifacts/model_comparison_report.json",
+    "metrics": {
+      "MAE": 737.5114549850532,
+      "RMSE": 1053.9105610787983,
+      "R2": 0.5913393291574989
+    }
+  },
+  "quality_gate": {
+    "metrics": {
+      "MAE": {
+        "operator": "<=",
+        "threshold": 737.5114549850532
+      },
+      "RMSE": {
+        "operator": "<=",
+        "threshold": 1053.9105610787983
+      },
+      "R2": {
+        "operator": ">=",
+        "threshold": 0.5913393291574989
+      }
+    }
+  }
+}

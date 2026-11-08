@@ -1,0 +1,10 @@
+{
+  "model_name": "BigMart_Sales_Model",
+  "model_version": 3,
+  "tracking_uri": "sqlite:///mlflow.db",
+  "bundle_directory": "deployment/bigmart_sales_model_v3",
+  "train_data": "data/raw/Train.csv",
+  "test_data": "data/raw/Test.csv",
+  "processed_features": "data/processed/X_train_processed.csv",
+  "inference_log": "logs/inference/inference_log.jsonl"
+}

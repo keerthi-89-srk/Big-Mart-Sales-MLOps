@@ -43,3 +43,19 @@ Thumbs.db
 # MLflow
 mlflow.db
 mlruns/
+
+# Generated Lab 10 API model bundle
+/deployment/bigmart_sales_model_v*/
+# Generated monitoring and execution reports
+/reports/*.json
+
+# Local databases and credentials
+*.db
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+
+# Environment files
+.env.*
+!.env.example

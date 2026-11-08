@@ -1,0 +1,29 @@
+{
+  "model_name": "BigMart_Sales_Model",
+  "experiment_name": "Big_Mart_Sales",
+  "tracking_uri": "sqlite:///mlflow.db",
+  "reference_train": "data/raw/Train.csv",
+  "incoming_directory": "data/incoming",
+  "ingestion_ledger": "data/processed/lab13_ingestion_ledger.json",
+  "monitoring_config": "config/lab12_monitoring.json",
+  "quality_gate_config": "config/lab7_quality_gate.json",
+  "report_directory": "reports",
+  "deployment_directory": "deployment",
+  "validation_fraction": 0.2,
+  "random_state": 42,
+  "n_estimators": 100,
+  "max_depth": 10,
+  "min_samples_split": 2,
+  "minimum_improvement": 0.0,
+  "max_missing_rate": 0.6,
+  "api_config": {
+    "model_name": "BigMart_Sales_Model",
+    "model_version": 0,
+    "tracking_uri": "sqlite:///mlflow.db",
+    "bundle_directory": "",
+    "train_data": "data/raw/Train.csv",
+    "test_data": "data/raw/Test.csv",
+    "processed_features": "data/processed/X_train_processed.csv",
+    "inference_log": "logs/inference/inference_log.jsonl"
+  }
+}

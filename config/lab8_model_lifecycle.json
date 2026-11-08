@@ -1,0 +1,9 @@
+{
+  "model_name": "BigMart_Sales_Model",
+  "experiment_name": "Big_Mart_Sales",
+  "tracking_uri": "sqlite:///mlflow.db",
+  "production_alias": "production",
+  "quality_gate_config": "config/lab7_quality_gate.json",
+  "report_directory": "reports",
+  "promotion_requires_validation_tags": true
+}

@@ -1,0 +1,7 @@
+{
+  "model_name": "BigMart_Sales_Model",
+  "recovery_model_version": 3,
+  "tracking_uri": "sqlite:///mlflow.db",
+  "repetitions": 1,
+  "report_directory": "reports"
+}
