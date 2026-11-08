@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -16,7 +17,10 @@ TEST_PATH = PROJECT_ROOT / "data" / "raw" / "Test.csv"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 
-def load_datasets(train_path: Path, test_path: Path):
+def load_datasets(
+    train_path: Path,
+    test_path: Path
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     print("[INFO] Loading raw datasets...")
 
     train_df = pd.read_csv(train_path)
@@ -38,15 +42,51 @@ def load_datasets(train_path: Path, test_path: Path):
 def preprocess_data(
     train_df: pd.DataFrame,
     test_df: pd.DataFrame
-):
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
     target_column = "Item_Outlet_Sales"
+
+    if train_df.empty:
+        raise ValueError("Training dataset is empty.")
+    if test_df.empty:
+        raise ValueError("Test dataset is empty.")
+    if train_df.columns.has_duplicates:
+        raise ValueError("Training dataset contains duplicate column names.")
+    if test_df.columns.has_duplicates:
+        raise ValueError("Test dataset contains duplicate column names.")
+    if target_column not in train_df.columns:
+        raise ValueError(
+            f"Training dataset is missing target column: {target_column}"
+        )
+    if target_column in test_df.columns:
+        raise ValueError(
+            f"Test dataset must not contain target column: {target_column}"
+        )
 
     # Separate target from training features
     train_features = train_df.drop(
         columns=[target_column]
     )
+    missing_columns = train_features.columns.difference(test_df.columns)
+    extra_columns = test_df.columns.difference(train_features.columns)
+    if not missing_columns.empty or not extra_columns.empty:
+        raise ValueError(
+            "Training and test feature columns do not match. "
+            f"Missing from test: {missing_columns.tolist()}; "
+            f"extra in test: {extra_columns.tolist()}."
+        )
+    test_features = test_df.loc[:, train_features.columns].copy()
 
-    test_features = test_df.copy()
+    try:
+        y_train = pd.to_numeric(train_df[target_column], errors="raise")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Target column {target_column} must contain numeric values."
+        ) from exc
+
+    if y_train.isna().any():
+        raise ValueError(f"Target column {target_column} contains missing values.")
+    if not np.isfinite(y_train.to_numpy(dtype=float)).all():
+        raise ValueError(f"Target column {target_column} contains non-finite values.")
 
     # Combine train and test features so that
     # categorical encoding is consistent
@@ -56,26 +96,32 @@ def preprocess_data(
         ignore_index=True
     )
 
+    categorical_columns = combined.select_dtypes(
+        include=["object", "category", "string"]
+    ).columns
+
     # Handle missing values
     for column in combined.columns:
-
-        if combined[column].dtype == "object":
-
-            mode_value = combined[column].mode()
-
-            if not mode_value.empty:
-                combined[column] = combined[column].fillna(
-                    mode_value.iloc[0]
+        if column in categorical_columns:
+            values = combined[column].astype(object)
+            mode_value = values.mode(dropna=True)
+            fill_value = mode_value.iloc[0] if not mode_value.empty else "Unknown"
+            combined[column] = values.fillna(fill_value)
+        elif pd.api.types.is_numeric_dtype(combined[column].dtype):
+            if np.isinf(combined[column].dropna().to_numpy(dtype=float)).any():
+                raise ValueError(
+                    f"Numeric feature column {column} contains non-finite values."
                 )
-            else:
-                combined[column] = combined[column].fillna(
-                    "Unknown"
+            if combined[column].isna().all():
+                raise ValueError(
+                    f"Numeric feature column {column} contains only missing values."
                 )
-
+            median_value = combined[column].median()
+            combined[column] = combined[column].fillna(median_value)
         else:
-
-            combined[column] = combined[column].fillna(
-                combined[column].median()
+            raise TypeError(
+                f"Feature column {column} has unsupported dtype "
+                f"{combined[column].dtype}."
             )
 
     # Standardize Item_Fat_Content values
@@ -93,7 +139,7 @@ def preprocess_data(
 
     # One-hot encode categorical columns
     categorical_columns = combined.select_dtypes(
-        include=["object"]
+        include=["object", "category", "string"]
     ).columns.tolist()
 
     combined_encoded = pd.get_dummies(
@@ -121,10 +167,6 @@ def preprocess_data(
         len(train_df):
     ].copy()
 
-    y_train = train_df[
-        target_column
-    ].copy()
-
     # Ensure numeric data
     X_train = X_train.astype(float)
     X_test = X_test.astype(float)
@@ -136,7 +178,7 @@ def save_processed_data(
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
     y_train: pd.Series
-):
+) -> None:
 
     PROCESSED_DIR.mkdir(
         parents=True,
@@ -171,7 +213,7 @@ def save_processed_data(
     )
 
 
-def main():
+def main() -> None:
 
     try:
 
